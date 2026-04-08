@@ -1,10 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta http-equiv="refresh" content="0;url=login.html">
+  <meta charset="UTF-8">
   <title>FitTrack</title>
+  <script>
+    // If keys exist → login, otherwise → setup
+    const keys = JSON.parse(localStorage.getItem('fittrack_keys') || '{}');
+    if (keys.SUPABASE_URL && keys.SUPABASE_ANON_KEY) {
+      window.location.replace('login.html');
+    } else {
+      window.location.replace('setup.html');
+    }
+  </script>
 </head>
 <body>
-  <p>Redirecting to <a href="login.html">FitTrack</a>...</p>
+  <p>Redirecting...</p>
 </body>
 </html>

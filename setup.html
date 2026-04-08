@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>FitTrack — Setup</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .setup-step { margin-bottom: 24px; }
+    .setup-step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      margin-right: 10px;
+    }
+    .setup-step-title {
+      font-size: 15px;
+      font-weight: 600;
+      display: inline;
+    }
+    .setup-step-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin: 6px 0 10px 38px;
+      line-height: 1.5;
+    }
+    .setup-step-desc a {
+      color: var(--accent-light);
+      text-decoration: underline;
+    }
+    .setup-step .input-group { margin-left: 38px; }
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+    .status-dot.ok { background: var(--success); }
+    .status-dot.missing { background: var(--danger); }
+    .status-dot.optional { background: var(--warning); }
+    .key-status {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      margin-left: 38px;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="auth-card" style="max-width:460px;">
+      <div class="auth-logo">
+        <h1>Fit<span>Track</span></h1>
+        <p>First-time setup — add your API keys</p>
+      </div>
+
+      <div id="setup-error" class="auth-error"></div>
+
+      <!-- Supabase -->
+      <div class="setup-step">
+        <span class="setup-step-num">1</span>
+        <h3 class="setup-step-title">Supabase (required)</h3>
+        <p class="setup-step-desc">
+          Go to <a href="https://supabase.com/dashboard" target="_blank">supabase.com/dashboard</a> → your project → Settings → API
+        </p>
+        <div class="input-group" style="margin-bottom:10px;">
+          <label>Supabase URL</label>
+          <input id="key-supabase-url" type="text" class="input" placeholder="https://xxxxx.supabase.co">
+        </div>
+        <div class="input-group">
+          <label>Supabase Anon Key</label>
+          <input id="key-supabase-anon" type="text" class="input" placeholder="eyJhbGciOi...">
+        </div>
+        <div class="key-status" id="status-supabase"></div>
+      </div>
+
+      <!-- OpenAI -->
+      <div class="setup-step">
+        <span class="setup-step-num">2</span>
+        <h3 class="setup-step-title">OpenAI (required for AI features)</h3>
+        <p class="setup-step-desc">
+          Go to <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a> → Create new key
+        </p>
+        <div class="input-group">
+          <label>OpenAI API Key</label>
+          <input id="key-openai" type="password" class="input" placeholder="sk-...">
+        </div>
+        <div class="key-status" id="status-openai"></div>
+      </div>
+
+      <!-- USDA -->
+      <div class="setup-step">
+        <span class="setup-step-num">3</span>
+        <h3 class="setup-step-title">USDA FoodData Central (required for food search)</h3>
+        <p class="setup-step-desc">
+          Go to <a href="https://fdc.nal.usda.gov/api-key-signup.html" target="_blank">fdc.nal.usda.gov</a> → Sign up for free API key
+        </p>
+        <div class="input-group">
+          <label>USDA API Key</label>
+          <input id="key-usda" type="text" class="input" placeholder="Your USDA API key">
+        </div>
+        <div class="key-status" id="status-usda"></div>
+      </div>
+
+      <!-- Info about free APIs -->
+      <div class="setup-step">
+        <span class="setup-step-num" style="background:var(--success);">&#10003;</span>
+        <h3 class="setup-step-title">Free APIs (no key needed)</h3>
+        <p class="setup-step-desc">
+          <strong>OpenFoodFacts</strong> (food search) and <strong>Wger</strong> (exercise database) work without keys.
+        </p>
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="saveKeys()" style="margin-top:8px;">
+        Save & Continue
+      </button>
+
+      <p id="skip-link" class="text-center mt-3 text-sm text-muted hidden" style="cursor:pointer;" onclick="window.location.href='login.html'">
+        Skip — I already set this up
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // Load any existing keys
+    window.addEventListener('DOMContentLoaded', () => {
+      const keys = JSON.parse(localStorage.getItem('fittrack_keys') || '{}');
+      if (keys.SUPABASE_URL) document.getElementById('key-supabase-url').value = keys.SUPABASE_URL;
+      if (keys.SUPABASE_ANON_KEY) document.getElementById('key-supabase-anon').value = keys.SUPABASE_ANON_KEY;
+      if (keys.OPENAI_API_KEY) document.getElementById('key-openai').value = keys.OPENAI_API_KEY;
+      if (keys.USDA_API_KEY) document.getElementById('key-usda').value = keys.USDA_API_KEY;
+
+      // Show skip link if keys exist
+      if (keys.SUPABASE_URL && keys.SUPABASE_ANON_KEY) {
+        document.getElementById('skip-link').classList.remove('hidden');
+      }
+
+      updateStatuses(keys);
+    });
+
+    function updateStatuses(keys) {
+      setStatus('status-supabase', keys.SUPABASE_URL && keys.SUPABASE_ANON_KEY);
+      setStatus('status-openai', keys.OPENAI_API_KEY, true);
+      setStatus('status-usda', keys.USDA_API_KEY, true);
+    }
+
+    function setStatus(id, hasValue, isOptional) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (hasValue) {
+        el.innerHTML = '<span class="status-dot ok"></span> Configured';
+      } else if (isOptional) {
+        el.innerHTML = '<span class="status-dot optional"></span> Not set — feature will be limited';
+      } else {
+        el.innerHTML = '<span class="status-dot missing"></span> Required';
+      }
+    }
+
+    function saveKeys() {
+      const supaUrl = document.getElementById('key-supabase-url').value.trim();
+      const supaKey = document.getElementById('key-supabase-anon').value.trim();
+      const openai = document.getElementById('key-openai').value.trim();
+      const usda = document.getElementById('key-usda').value.trim();
+
+      // Validate required
+      if (!supaUrl || !supaKey) {
+        const err = document.getElementById('setup-error');
+        err.textContent = 'Supabase URL and Anon Key are required.';
+        err.classList.add('visible');
+        return;
+      }
+
+      const keys = {
+        SUPABASE_URL: supaUrl,
+        SUPABASE_ANON_KEY: supaKey,
+        OPENAI_API_KEY: openai,
+        USDA_API_KEY: usda
+      };
+
+      localStorage.setItem('fittrack_keys', JSON.stringify(keys));
+      window.location.href = 'login.html';
+    }
+  </script>
+</body>
+</html>
