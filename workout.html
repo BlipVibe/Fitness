@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>FitTrack — Workout</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Add Exercise Modal -->
+  <div class="modal-overlay" id="exercise-modal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title" id="exercise-modal-title">Add Exercise</h2>
+
+      <div class="search-wrapper">
+        <input type="text" class="input input-search" id="exercise-search" placeholder="Search exercises..." autocomplete="off" oninput="handleExerciseSearch(this.value)">
+        <div class="search-dropdown" id="exercise-dropdown"></div>
+      </div>
+
+      <div id="exercise-selected" class="hidden">
+        <div class="input-group mb-3">
+          <label>Exercise</label>
+          <input type="text" id="sel-exercise-name" class="input" readonly>
+        </div>
+        <div class="input-group mb-3">
+          <label>Muscle Group</label>
+          <input type="text" id="sel-exercise-muscle" class="input" readonly>
+        </div>
+        <div class="exercise-form">
+          <div class="input-group">
+            <label>Sets</label>
+            <input type="number" id="sel-sets" class="input" value="3" min="1">
+          </div>
+          <div class="input-group">
+            <label>Reps</label>
+            <input type="number" id="sel-reps" class="input" value="10" min="1">
+          </div>
+          <div class="input-group">
+            <label>Weight</label>
+            <input type="number" id="sel-weight" class="input" placeholder="lbs" min="0">
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom exercise fallback -->
+      <div id="custom-exercise-section" class="hidden mt-3">
+        <p class="text-sm text-muted mb-3">Can't find it? Add a custom exercise.</p>
+        <div class="input-group mb-3">
+          <label>Exercise Name</label>
+          <input type="text" id="custom-exercise-name" class="input" placeholder="e.g. Cable Flyes">
+        </div>
+        <div class="input-group mb-3">
+          <label>Muscle Group</label>
+          <input type="text" id="custom-exercise-muscle" class="input" placeholder="e.g. Chest">
+        </div>
+        <div class="exercise-form">
+          <div class="input-group">
+            <label>Sets</label>
+            <input type="number" id="custom-sets" class="input" value="3" min="1">
+          </div>
+          <div class="input-group">
+            <label>Reps</label>
+            <input type="number" id="custom-reps" class="input" value="10" min="1">
+          </div>
+          <div class="input-group">
+            <label>Weight</label>
+            <input type="number" id="custom-weight" class="input" placeholder="lbs" min="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions mt-3">
+        <button class="btn btn-secondary" onclick="closeExerciseModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmAddExercise()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Workout Builder Modal -->
+  <div class="modal-overlay" id="ai-workout-modal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">AI Workout Builder</h2>
+
+      <div id="ai-workout-form">
+        <div class="input-group mb-3">
+          <label>What do you want to train today?</label>
+          <input type="text" id="ai-workout-goal" class="input" placeholder="e.g. Upper body strength, Leg day, Full body">
+        </div>
+
+        <div class="input-group mb-3">
+          <label>Experience Level</label>
+          <div class="ai-options" id="ai-experience">
+            <button class="ai-option-chip" data-value="beginner" onclick="selectChip(this,'ai-experience')">Beginner</button>
+            <button class="ai-option-chip selected" data-value="intermediate" onclick="selectChip(this,'ai-experience')">Intermediate</button>
+            <button class="ai-option-chip" data-value="advanced" onclick="selectChip(this,'ai-experience')">Advanced</button>
+          </div>
+        </div>
+
+        <div class="input-group mb-3">
+          <label>Time Available</label>
+          <div class="ai-options" id="ai-time">
+            <button class="ai-option-chip" data-value="30" onclick="selectChip(this,'ai-time')">30 min</button>
+            <button class="ai-option-chip selected" data-value="45" onclick="selectChip(this,'ai-time')">45 min</button>
+            <button class="ai-option-chip" data-value="60" onclick="selectChip(this,'ai-time')">60 min</button>
+            <button class="ai-option-chip" data-value="90" onclick="selectChip(this,'ai-time')">90 min</button>
+          </div>
+        </div>
+
+        <div class="input-group mb-3">
+          <label>Equipment</label>
+          <div class="ai-options" id="ai-equipment">
+            <button class="ai-option-chip" data-value="none" onclick="selectChip(this,'ai-equipment')">None</button>
+            <button class="ai-option-chip" data-value="dumbbells" onclick="selectChip(this,'ai-equipment')">Dumbbells</button>
+            <button class="ai-option-chip selected" data-value="full gym" onclick="selectChip(this,'ai-equipment')">Full Gym</button>
+            <button class="ai-option-chip" data-value="home gym" onclick="selectChip(this,'ai-equipment')">Home Gym</button>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="ai-generate-btn" onclick="generateAIWorkout()">Generate Workout</button>
+      </div>
+
+      <!-- AI Results -->
+      <div id="ai-workout-result" class="hidden">
+        <div id="ai-workout-exercises"></div>
+        <div class="modal-actions mt-3">
+          <button class="btn btn-secondary" onclick="resetAIBuilder()">Regenerate</button>
+          <button class="btn btn-primary" onclick="useAIWorkout()">Use This Workout</button>
+        </div>
+      </div>
+
+      <div class="modal-actions mt-3" id="ai-close-actions">
+        <button class="btn btn-ghost btn-full" onclick="closeAIWorkoutModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save to Plan Modal -->
+  <div class="modal-overlay" id="save-plan-modal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Save to Plan</h2>
+
+      <div id="existing-plans-section">
+        <p class="text-sm text-muted mb-3">Add to an existing plan or create a new one.</p>
+        <div id="plan-list-select"></div>
+      </div>
+
+      <div class="input-group mt-3 mb-3">
+        <label>New Plan Name</label>
+        <input type="text" id="new-plan-name" class="input" placeholder="e.g. 4 Day Split">
+      </div>
+      <div class="input-group mb-3">
+        <label>Day Label</label>
+        <input type="text" id="plan-day-label" class="input" placeholder="e.g. Upper, Push, Leg Day">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeSavePlanModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmSavePlan()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div class="app-container">
+    <!-- Header -->
+    <div class="page-header">
+      <h1 class="page-title">Workout</h1>
+      <div class="page-header-actions">
+        <button class="avatar-btn" id="user-avatar" onclick="toggleUserMenu()">?</button>
+      </div>
+    </div>
+
+    <!-- User menu -->
+    <div id="user-menu" class="card hidden" style="position:absolute;right:16px;top:60px;z-index:80;width:200px;padding:8px;">
+      <button class="btn btn-ghost btn-full" onclick="window.location.href='food.html'" style="justify-content:flex-start;">Food Tracker</button>
+      <button class="btn btn-ghost btn-full" onclick="window.location.href='workout.html'" style="justify-content:flex-start;">Workouts</button>
+      <hr style="border:0;border-top:1px solid var(--border);margin:4px 0;">
+      <button class="btn btn-ghost btn-full btn-danger" onclick="handleLogout()" style="justify-content:flex-start;">Log Out</button>
+    </div>
+
+    <!-- Date Nav -->
+    <div class="date-nav">
+      <button class="date-nav-btn" onclick="changeDate(-1)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <span class="date-label" id="date-label">Today</span>
+      <button class="date-nav-btn" onclick="changeDate(1)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+    </div>
+
+    <!-- Today's Workout -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Today's Workout</span>
+        <div class="flex gap-2">
+          <button class="btn btn-sm btn-secondary" onclick="openSavePlanModal()">Save Plan</button>
+          <button class="btn btn-sm btn-primary" onclick="openExerciseModal()">+ Add</button>
+        </div>
+      </div>
+      <div id="workout-list">
+        <div class="empty-state">
+          <div class="empty-state-icon">💪</div>
+          <div class="empty-state-text">No exercises yet. Add one or use the AI builder.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Builder Card -->
+    <div class="card mt-3">
+      <div class="card-header">
+        <span class="card-title">AI Workout Builder</span>
+      </div>
+      <p class="text-sm text-muted mb-3">Let AI generate a workout for you.</p>
+      <button class="btn btn-primary btn-full" onclick="openAIWorkoutModal()">Build a Workout</button>
+    </div>
+
+    <!-- Saved Plans -->
+    <div class="mt-4">
+      <div class="section-label">Saved Plans</div>
+      <div id="saved-plans">
+        <div class="empty-state">
+          <div class="empty-state-text">No plans saved yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <a href="food.html" class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      <span>Food</span>
+    </a>
+    <a href="workout.html" class="nav-item active">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M3 10h1.5v4H3a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1z"/><path d="M19.5 10H21a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-1.5v-4z"/><rect x="4.5" y="8" width="3" height="8" rx="1"/><rect x="16.5" y="8" width="3" height="8" rx="1"/><rect x="7.5" y="6" width="9" height="12" rx="1"/></svg>
+      <span>Workout</span>
+    </a>
+    <a href="food.html#goals" class="nav-item" onclick="event.preventDefault();window.location.href='food.html'">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      <span>Goals</span>
+    </a>
+  </nav>
+
+  <script src="js/config.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    initApp('workout');
+  </script>
+</body>
+</html>

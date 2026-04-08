@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>FitTrack — Login</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <h1>Fit<span>Track</span></h1>
+        <p>Your fitness, simplified.</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login" onclick="switchAuthTab('login')">Log In</button>
+        <button class="auth-tab" data-tab="signup" onclick="switchAuthTab('signup')">Sign Up</button>
+      </div>
+
+      <!-- Error -->
+      <div id="auth-error" class="auth-error"></div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+        <div class="input-group">
+          <label for="login-email">Email</label>
+          <input id="login-email" type="email" class="input" placeholder="you@example.com" required>
+        </div>
+        <div class="input-group">
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" class="input" placeholder="Your password" required minlength="6">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+          Log In
+        </button>
+      </form>
+
+      <!-- Signup Form -->
+      <form id="signup-form" class="auth-form" hidden onsubmit="handleSignup(event)">
+        <div class="input-group">
+          <label for="signup-email">Email</label>
+          <input id="signup-email" type="email" class="input" placeholder="you@example.com" required>
+        </div>
+        <div class="input-group">
+          <label for="signup-password">Password</label>
+          <input id="signup-password" type="password" class="input" placeholder="Min 6 characters" required minlength="6">
+        </div>
+        <div class="input-group">
+          <label for="signup-confirm">Confirm Password</label>
+          <input id="signup-confirm" type="password" class="input" placeholder="Confirm password" required minlength="6">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="signup-btn">
+          Create Account
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/supabase.js"></script>
+  <script>
+    // Check if already logged in
+    (async () => {
+      const session = await getSession();
+      if (session) {
+        window.location.href = 'food.html';
+      }
+    })();
+
+    function switchAuthTab(tab) {
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+      document.getElementById('login-form').hidden = tab !== 'login';
+      document.getElementById('signup-form').hidden = tab !== 'signup';
+      hideAuthError();
+    }
+
+    function showAuthError(msg) {
+      const el = document.getElementById('auth-error');
+      el.textContent = msg;
+      el.classList.add('visible');
+    }
+
+    function hideAuthError() {
+      document.getElementById('auth-error').classList.remove('visible');
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      hideAuthError();
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      btn.textContent = 'Logging in...';
+
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      const { error } = await signIn(email, password);
+      if (error) {
+        showAuthError(error.message);
+        btn.disabled = false;
+        btn.textContent = 'Log In';
+        return;
+      }
+      window.location.href = 'food.html';
+    }
+
+    async function handleSignup(e) {
+      e.preventDefault();
+      hideAuthError();
+
+      const password = document.getElementById('signup-password').value;
+      const confirm = document.getElementById('signup-confirm').value;
+
+      if (password !== confirm) {
+        showAuthError('Passwords do not match.');
+        return;
+      }
+
+      const btn = document.getElementById('signup-btn');
+      btn.disabled = true;
+      btn.textContent = 'Creating account...';
+
+      const email = document.getElementById('signup-email').value;
+      const { error } = await signUp(email, password);
+
+      if (error) {
+        showAuthError(error.message);
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+        return;
+      }
+
+      showAuthError('');
+      document.getElementById('auth-error').classList.remove('visible');
+      // Some Supabase configs auto-confirm; try redirect
+      const session = await getSession();
+      if (session) {
+        window.location.href = 'food.html';
+      } else {
+        btn.textContent = 'Check your email!';
+      }
+    }
+  </script>
+</body>
+</html>

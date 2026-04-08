@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>FitTrack — Food</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Serving Modal -->
+  <div class="modal-overlay" id="serving-modal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title" id="modal-food-name">Food Name</h2>
+
+      <div class="serving-adjuster">
+        <label>Servings</label>
+        <input type="number" id="serving-qty" value="1" min="0.25" step="0.25" oninput="updateServingPreview()">
+        <span class="unit" id="serving-unit">serving</span>
+      </div>
+
+      <div class="macro-preview" id="serving-preview">
+        <div class="macro-preview-item">
+          <div class="value" id="preview-cal">0</div>
+          <div class="label">Cal</div>
+        </div>
+        <div class="macro-preview-item">
+          <div class="value" id="preview-protein">0g</div>
+          <div class="label">Protein</div>
+        </div>
+        <div class="macro-preview-item">
+          <div class="value" id="preview-carbs">0g</div>
+          <div class="label">Carbs</div>
+        </div>
+        <div class="macro-preview-item">
+          <div class="value" id="preview-fat">0g</div>
+          <div class="label">Fat</div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeServingModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmAddFood()">Add Food</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Refine Modal -->
+  <div class="modal-overlay" id="refine-modal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Refine Estimate</h2>
+      <p class="text-sm text-muted mb-3">Adjust the description and we'll re-estimate.</p>
+      <div class="input-group">
+        <textarea id="refine-input" class="input" rows="3" placeholder="e.g. 2 cups of rice with grilled chicken breast"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeRefineModal()">Cancel</button>
+        <button class="btn btn-primary" id="refine-btn" onclick="handleRefine()">Re-estimate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div class="app-container">
+    <!-- Header -->
+    <div class="page-header">
+      <h1 class="page-title">Food</h1>
+      <div class="page-header-actions">
+        <button class="avatar-btn" id="user-avatar" onclick="toggleUserMenu()">?</button>
+      </div>
+    </div>
+
+    <!-- User menu dropdown -->
+    <div id="user-menu" class="card hidden" style="position:absolute;right:16px;top:60px;z-index:80;width:200px;padding:8px;">
+      <button class="btn btn-ghost btn-full" onclick="window.location.href='food.html'" style="justify-content:flex-start;">Food Tracker</button>
+      <button class="btn btn-ghost btn-full" onclick="window.location.href='workout.html'" style="justify-content:flex-start;">Workouts</button>
+      <hr style="border:0;border-top:1px solid var(--border);margin:4px 0;">
+      <button class="btn btn-ghost btn-full btn-danger" onclick="handleLogout()" style="justify-content:flex-start;">Log Out</button>
+    </div>
+
+    <!-- Date Nav -->
+    <div class="date-nav">
+      <button class="date-nav-btn" onclick="changeDate(-1)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <span class="date-label" id="date-label">Today</span>
+      <button class="date-nav-btn" onclick="changeDate(1)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+    </div>
+
+    <!-- Macro Summary -->
+    <div class="macro-grid" id="macro-summary">
+      <div class="macro-item macro-calories">
+        <div class="macro-value" id="total-cal">0</div>
+        <div class="macro-label">Cal</div>
+        <div class="macro-bar-wrap"><div class="macro-bar" id="bar-cal" style="width:0%"></div></div>
+      </div>
+      <div class="macro-item macro-protein">
+        <div class="macro-value" id="total-protein">0g</div>
+        <div class="macro-label">Protein</div>
+        <div class="macro-bar-wrap"><div class="macro-bar" id="bar-protein" style="width:0%"></div></div>
+      </div>
+      <div class="macro-item macro-carbs">
+        <div class="macro-value" id="total-carbs">0g</div>
+        <div class="macro-label">Carbs</div>
+        <div class="macro-bar-wrap"><div class="macro-bar" id="bar-carbs" style="width:0%"></div></div>
+      </div>
+      <div class="macro-item macro-fat">
+        <div class="macro-value" id="total-fat">0g</div>
+        <div class="macro-label">Fat</div>
+        <div class="macro-bar-wrap"><div class="macro-bar" id="bar-fat" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-wrapper">
+      <input type="text" class="input input-search" id="food-search" placeholder="Search foods or describe a meal..." autocomplete="off" oninput="handleFoodSearch(this.value)">
+      <div class="search-dropdown" id="food-dropdown"></div>
+    </div>
+
+    <!-- Food Log -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Today's Log</span>
+        <span class="card-subtitle" id="food-count">0 items</span>
+      </div>
+      <div class="food-list" id="food-list">
+        <div class="empty-state">
+          <div class="empty-state-icon">🍽</div>
+          <div class="empty-state-text">No food logged yet. Search above to add.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <a href="food.html" class="nav-item active">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      <span>Food</span>
+    </a>
+    <a href="workout.html" class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M3 10h1.5v4H3a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1z"/><path d="M19.5 10H21a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-1.5v-4z"/><rect x="4.5" y="8" width="3" height="8" rx="1"/><rect x="16.5" y="8" width="3" height="8" rx="1"/><rect x="7.5" y="6" width="9" height="12" rx="1"/></svg>
+      <span>Workout</span>
+    </a>
+    <a href="#goals" class="nav-item" onclick="event.preventDefault();toggleGoals()">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      <span>Goals</span>
+    </a>
+  </nav>
+
+  <!-- Goals Panel (slide-up) -->
+  <div class="modal-overlay" id="goals-panel">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Daily Goals</h2>
+
+      <div class="goals-form">
+        <div class="input-group">
+          <label>Weight (lbs)</label>
+          <input type="number" id="goal-weight" class="input" placeholder="e.g. 170">
+        </div>
+
+        <div class="input-group">
+          <label>Goal</label>
+          <div class="radio-group" id="goal-type">
+            <button class="radio-option" data-value="lose" onclick="selectGoal(this)">Lose</button>
+            <button class="radio-option selected" data-value="maintain" onclick="selectGoal(this)">Maintain</button>
+            <button class="radio-option" data-value="gain" onclick="selectGoal(this)">Gain</button>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Activity Level</label>
+          <div class="radio-group" id="goal-activity">
+            <button class="radio-option" data-value="sedentary" onclick="selectActivity(this)">Low</button>
+            <button class="radio-option selected" data-value="moderate" onclick="selectActivity(this)">Moderate</button>
+            <button class="radio-option" data-value="active" onclick="selectActivity(this)">Active</button>
+          </div>
+        </div>
+
+        <div class="calculated-targets" id="calculated-targets">
+          <div class="target-item">
+            <div class="target-value" id="target-cal">2000</div>
+            <div class="target-label">Calories</div>
+          </div>
+          <div class="target-item">
+            <div class="target-value" id="target-protein">150g</div>
+            <div class="target-label">Protein</div>
+          </div>
+          <div class="target-item">
+            <div class="target-value" id="target-carbs">225g</div>
+            <div class="target-label">Carbs</div>
+          </div>
+          <div class="target-item">
+            <div class="target-value" id="target-fat">67g</div>
+            <div class="target-label">Fat</div>
+          </div>
+        </div>
+
+        <div class="input-group mt-3">
+          <label>Or set manually:</label>
+          <div class="exercise-form">
+            <div class="input-group">
+              <label>Calories</label>
+              <input type="number" id="manual-cal" class="input" placeholder="2000">
+            </div>
+            <div class="input-group">
+              <label>Protein</label>
+              <input type="number" id="manual-protein" class="input" placeholder="150">
+            </div>
+            <div class="input-group">
+              <label>Fat</label>
+              <input type="number" id="manual-fat" class="input" placeholder="67">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeGoals()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveGoals()">Save Goals</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    initApp('food');
+  </script>
+</body>
+</html>
